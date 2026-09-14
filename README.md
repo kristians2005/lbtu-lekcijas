@@ -44,13 +44,15 @@ The output is:
 - `public/data/catalogue.json`: compact source-derived catalogue and snapshot references.
 - `public/data/snapshots/*.json`: separate content-versioned timetable files loaded only for the selected programme, semester, mode, and group.
 
-Fetching uses concurrency 2, a 20-second timeout, two retries, a small inter-request delay, and an in-process URL cache. Snapshot files are written before the manifest. If an individual update fails, its prior successful reference, data, source URL, and original fetch timestamp are retained. A failed page is never replaced with an empty timetable. Old content-versioned files are intentionally retained so an older deployed/cached manifest is not left with a missing file.
+Fetching uses concurrency 2, a 20-second timeout, two retries, a small inter-request delay, and an in-process URL cache. Snapshot files are written before the manifest. If an individual update fails, its prior successful reference, data, source URL, and original fetch timestamp are retained. A failed page is never replaced with an empty timetable. Checks that produce identical parsed data reuse the prior snapshot and manifest, so timestamps alone do not create commits or deployments. Old content-versioned files are intentionally retained so an older deployed/cached manifest is not left with a missing file.
 
-The retained snapshot was completely regenerated from the Autumn 2026 directory on 2026-09-01 at approximately 23:12 UTC. The generated manifest contains 52 source programmes and all source selections that parsed successfully during that run. Every snapshot carries its own actual upstream `fetchedAt` timestamp; catalogue counts are never hardcoded.
+The initial retained snapshot was completely regenerated from the Autumn 2026 directory on 2026-09-01 at approximately 23:12 UTC. The generated manifest contains source-derived programmes and all source selections that parsed successfully. Every changed snapshot carries the time that version was fetched from upstream; catalogue counts are never hardcoded.
 
 ## Freshness And Caching
 
-The in-app **Refresh** button re-downloads `catalogue.json` and the referenced JSON from the currently deployed static origin. It does not scrape LBTU and does not make the university data live. University changes appear only after this workflow succeeds:
+The `Update timetables` GitHub Actions workflow checks every configured public LBTU timetable every six hours. When parsed data changes, it runs the tests, lint, and production build, commits only `public/data`, and pushes the commit to the default branch. The connected Vercel project then deploys that commit. The workflow can also be started manually with `workflow_dispatch`.
+
+The in-app **Refresh** button re-downloads `catalogue.json` and the referenced JSON from the currently deployed static origin. It does not scrape LBTU directly; it picks up the latest successful scheduled update. The same workflow can be run locally when developing:
 
 ```bash
 npm run data:update
@@ -58,9 +60,9 @@ npm run build
 # deploy dist/
 ```
 
-`public/_headers` supplies a cache policy for hosts that support Netlify-style headers: the manifest must revalidate, while content-versioned snapshots are immutable. Configure equivalent headers on other hosts. The UI displays the selected snapshot's successful source fetch time, not the browser load time.
+`vercel.json` configures the deployed cache policy, and `public/_headers` provides the equivalent rules for hosts that support Netlify-style headers. The manifest must revalidate, while content-versioned snapshots are immutable. The UI displays when the selected snapshot version was fetched, not the browser load or latest unchanged check time.
 
-A future CI job could run the same update, tests, build, and static deployment on a schedule. No scheduled workflow is included or enabled.
+The workflow needs repository **Actions > General > Workflow permissions** set to **Read and write permissions** so it can commit changed snapshots. GitHub may disable scheduled workflows in public repositories after 60 days without repository activity; `workflow_dispatch` remains available to restart it.
 
 ## Date Expansion
 

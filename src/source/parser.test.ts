@@ -70,6 +70,12 @@ describe('LBTU source parser', () => {
     expect(snapshot.entries[0].recurrence).not.toHaveProperty('alternatingWeek')
   })
 
+  it('recognizes a standalone decimal subgroup label', () => {
+    const standaloneSubgroup = timetableHtml.replace('1.gr. + 2.1.gr.', '1.1')
+    const snapshot = parseTimetable(standaloneSubgroup, 'https://lais.lbtu.lv/schedule', 'selection', '2026-09-01T12:00:00Z')
+    expect(snapshot.entries[0].groupNotes).toEqual(['1.1'])
+  })
+
   it('distinguishes a genuine empty timetable from an unrecognized source page', () => {
     const empty = timetableHtml.replace(/<b><a href="\/pls\/pub\/kursa_apraksts_pub\/GDAT1009">[\s\S]*?<\/td>/, '</td>')
     expect(parseTimetable(empty, 'https://lais.lbtu.lv/empty', 'empty', '2026-09-01T12:00:00Z').state).toBe('empty')

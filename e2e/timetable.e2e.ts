@@ -88,6 +88,7 @@ test('desktop week view and all configured themes render', async ({ page }) => {
 })
 
 test('G0907 alternating weeks show the correct Tuesday classes', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-01T09:00:00+03:00'))
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
   await applyFirstTheme(page)

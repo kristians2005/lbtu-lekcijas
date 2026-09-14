@@ -7,8 +7,10 @@ import {
   type CatalogueManifest,
   type Programme,
   type SnapshotReference,
+  type TimetableSnapshot,
 } from '../src/domain/models.ts'
 import { parseDirectory, parseGroups, parseTimetable } from '../src/source/parser.ts'
+import { sameCatalogueContent, sameTimetableContent } from './data-versioning.ts'
 import { DIRECTORY_URLS, FETCH_OPTIONS } from './source-config.ts'
 
 const publicData = resolve('public', 'data')
@@ -70,6 +72,15 @@ function previousReference(previous: CatalogueManifest | undefined, snapshotKey:
   return undefined
 }
 
+async function previousSnapshot(reference: SnapshotReference | undefined): Promise<TimetableSnapshot | undefined> {
+  if (!reference?.available || !reference.file) return undefined
+  try {
+    return JSON.parse(await readFile(resolve('public', reference.file), 'utf8')) as TimetableSnapshot
+  } catch {
+    return undefined
+  }
+}
+
 async function updateProgramme(programme: Programme, previous: CatalogueManifest | undefined): Promise<void> {
   for (const selection of programme.selections) {
     const allGroup = selection.groups[0]
@@ -89,15 +100,21 @@ async function updateProgramme(programme: Programme, previous: CatalogueManifest
         try {
           const source = group.id === 'all' ? page : await fetchHtml(group.snapshot.sourceUrl)
           const snapshot = parseTimetable(source.html, group.snapshot.sourceUrl, group.snapshot.key, source.fetchedAt)
-          const content = `${JSON.stringify(snapshot)}\n`
-          const hash = stableHash(content)
-          const filename = `${group.snapshot.key.replace(/[^a-zA-Z0-9_-]/g, '-')}.${hash}.json`
-          await writeFile(resolve(snapshotsDirectory, filename), content, 'utf8')
-          group.snapshot = {
-            ...group.snapshot,
-            file: `data/snapshots/${filename}`,
-            fetchedAt: source.fetchedAt,
-            available: true,
+          const old = previousReference(previous, group.snapshot.key)
+          const oldSnapshot = await previousSnapshot(old)
+          if (old && oldSnapshot && sameTimetableContent(oldSnapshot, snapshot)) {
+            group.snapshot = old
+          } else {
+            const content = `${JSON.stringify(snapshot)}\n`
+            const hash = stableHash(content)
+            const filename = `${group.snapshot.key.replace(/[^a-zA-Z0-9_-]/g, '-')}.${hash}.json`
+            await writeFile(resolve(snapshotsDirectory, filename), content, 'utf8')
+            group.snapshot = {
+              ...group.snapshot,
+              file: `data/snapshots/${filename}`,
+              fetchedAt: source.fetchedAt,
+              available: true,
+            }
           }
         } catch (error) {
           const old = previousReference(previous, group.snapshot.key)
@@ -171,6 +188,10 @@ async function main() {
     programmes: programmes.sort((left, right) => left.code.localeCompare(right.code)),
   }
   const manifest: CatalogueManifest = { ...manifestBase, version: stableHash(JSON.stringify(manifestBase)) }
+  if (previous && sameCatalogueContent(previous, manifest)) {
+    console.log(`Checked ${targets.length} programmes; published data is unchanged`)
+    return
+  }
   const temporaryPath = `${manifestPath}.tmp`
   await writeFile(temporaryPath, `${JSON.stringify(manifest)}\n`, 'utf8')
   if (existsSync(manifestPath)) await rm(manifestPath)
