@@ -47,7 +47,10 @@ export function ScheduleView({ occurrences, unfilteredOccurrences, uncertain, se
   const today = todayInRiga()
   const tomorrow = addDays(today, 1)
   const relativeLabel = (date: string) => date === today ? t.relativeToday : date === tomorrow ? t.tomorrow : undefined
-  const nextOccurrence = occurrences.find((item) => item.startEpochMs > now)
+  const hasCurrentOccurrence = occurrences.some((item) => item.startEpochMs <= now && item.endEpochMs > now)
+  const nextOccurrence = !hasCurrentOccurrence
+    ? occurrences.find((item) => item.startEpochMs > now && item.startEpochMs - now <= 30 * 60_000)
+    : undefined
   const stateFor = (occurrence: Occurrence): LessonState => {
     if (occurrence.startEpochMs <= now && occurrence.endEpochMs > now) return 'current'
     if (occurrence.id === nextOccurrence?.id) return 'next'
