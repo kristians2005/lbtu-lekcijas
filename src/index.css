@@ -22,11 +22,18 @@ html[data-theme="dark"], html[data-theme="synthwave"], html[data-theme="hallowee
 body { margin: 0; min-width: 320px; min-height: 100dvh; background: var(--color-base-200); }
 button, input, select { font: inherit; }
 .event-card { border-left: 4px solid var(--course-accent); }
+.event-card.lesson-current { border-color: color-mix(in oklab, var(--color-success) 70%, var(--color-base-300)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-success) 45%, transparent), 0 0 20px color-mix(in oklab, var(--color-success) 30%, transparent); }
+.event-card.lesson-next { animation: lesson-aura 2s ease-in-out infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @keyframes theme-aura {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 0%, transparent); }
   45% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--color-primary) 28%, transparent), 0 0 18px color-mix(in oklab, var(--color-primary) 45%, transparent); }
+}
+
+@keyframes lesson-aura {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-primary) 0%, transparent); }
+  50% { box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 38%, transparent), 0 0 22px color-mix(in oklab, var(--color-primary) 42%, transparent); }
 }
 
 .theme-attention { animation: theme-aura 1s ease-out 3; }
