@@ -43,12 +43,13 @@ async function fetchHtml(url: string): Promise<{ html: string; fetchedAt: string
         return { html, fetchedAt: new Date().toISOString() }
       } catch (error) {
         lastError = error
+        console.error(`Fetch attempt ${attempt + 1}/${FETCH_OPTIONS.retries + 1} failed for ${url}:`, error)
         if (attempt < FETCH_OPTIONS.retries) await sleep(500 * (attempt + 1))
       } finally {
         clearTimeout(timeout)
       }
     }
-    throw lastError
+    throw new Error(`Failed to fetch ${url} after ${FETCH_OPTIONS.retries + 1} attempts`, { cause: lastError })
   })()
   responseCache.set(url, request)
   return request

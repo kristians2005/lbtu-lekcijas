@@ -30,7 +30,20 @@ jobs:
         run: npm ci
 
       - name: Fetch current LBTU timetables
+        id: fetch
         run: npm run data:update
+
+      - name: Diagnose LBTU connectivity
+        if: failure() && steps.fetch.outcome == 'failure'
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          node --input-type=module -e "import { lookup } from 'node:dns/promises'; try { console.log(await lookup('lais.lbtu.lv', { all: true })); } catch (error) { console.error(error); process.exitCode = 1; }" || true
+          for family in -4 -6; do
+            echo "::group::LBTU HTTPS probe ($family)"
+            curl "$family" --verbose --location --output /dev/null --connect-timeout 20 --max-time 30 'https://lais.lbtu.lv/luis/lsarG.html' || true
+            echo "::endgroup::"
+          done
 
       - name: Check for timetable changes
         id: changes
